@@ -72,8 +72,9 @@
    
    $pc[31:0] = >>1$next_pc;
    
-   $next_pc[31:0] = $reset
-      ? 0 :
+   $next_pc[31:0] =
+      $reset ? 0 :
+      $taken_br ? $br_tgt_pc :
       // default
       $pc + 4;
    
@@ -132,7 +133,7 @@
    $is_addi = $dec_bits ==? 11'bx_000_0010011;
    $is_add  = $dec_bits ==  11'b0_000_0110011;
    
-   $result[31:0] = 
+   $result[31:0] =
       $is_addi ? $src1_value + $imm :
       $is_add  ? $src1_value + $src2_value :
       // Default 
@@ -140,8 +141,21 @@
    
    $wr_en = $rd_valid && $rd != 0;
    
+   $taken_br =
+      $is_beq ? $src1_value == $src2_value :
+      $is_bne ? $src1_value != $src2_value :
+      $is_blt ? ($src1_value < $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
+      $is_bge ? ($src1_value >= $src2_value) ^ ($src1_value[31] != $src2_value[31]) :
+      $is_bltu ? $src1_value < $src2_value :
+      $is_bgeu ? $src1_value >= $src2_value :
+      // default
+      1'b0;
+   
+   $br_tgt_pc[31:0] = $pc + $imm;
+   
    // Assert these to end simulation (before Makerchip cycle limit).
-   *passed = 1'b0;
+   // *passed = 1'b0;
+   m4+tb()
    *failed = *cyc_cnt > M4_MAX_CYC;
    
    // m4+rf(32, 32, $reset, $wr_en, $wr_index[4:0], $wr_data[31:0], $rd1_en, $rd1_index[4:0], $rd1_data, $rd2_en, $rd2_index[4:0], $rd2_data)
